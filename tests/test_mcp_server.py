@@ -1,14 +1,11 @@
 import json
 
-from factories import FakeAppsApi, FakeCoreApi, FakeCustomApi, make_pod
-from github_fakes import REPO, FakeGitHub
+from factories import FakeCoreApi
 from mcp import Client
+from servers import server_with
 from urllib3.exceptions import MaxRetryError
 
-from oncall_agent.config import load_settings
-from oncall_agent.github import GitHubClient
 from oncall_agent.kube import KubeClients
-from oncall_agent.mcp_server import build_server
 
 EXPECTED = {
     "get_environment_status": "Ver estado del entorno",
@@ -23,21 +20,6 @@ EXPECTED = {
     "get_pull_request": "Consultar Pull Request",
     "open_pull_request": "Abrir Pull Request",
 }
-
-
-def healthy_clients() -> KubeClients:
-    core = FakeCoreApi({"sample-api-dev": [make_pod("sample-api-a")]})
-    return KubeClients(core=core, apps=FakeAppsApi(), custom=FakeCustomApi())
-
-
-def server_with(clients_factory=healthy_clients, github=None, token="t"):
-    settings = load_settings({"GITHUB_TOKEN": token} if token else {})
-    fake = github or FakeGitHub()
-    return build_server(
-        settings,
-        clients_factory=clients_factory,
-        github_factory=lambda: GitHubClient(REPO, token, transport=fake.transport()),
-    )
 
 
 def text_of(result) -> str:
