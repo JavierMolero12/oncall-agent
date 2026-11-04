@@ -6,6 +6,7 @@ from github_fakes import FakeGitHub
 from llm_fakes import ScriptedLLM, connection_error, refusal, reply, text, thinking, tool_use
 from mcp import Client
 from servers import server_with
+from toolbox_fakes import FIX, PODS_OK, FakeToolBox
 
 from oncall_agent.agent import (
     SYSTEM_PROMPT,
@@ -23,42 +24,6 @@ from oncall_agent.toolbox import ToolBox, ToolOutcome
 
 MODEL = "claude-sonnet-5-5"
 LIST_DEV = tool_use("list_pods", {"environment": "dev"})
-PODS_OK = ToolOutcome(ok=True, data={"pods": [], "summary": "1 de 1 pods listos"}, text="{}")
-FIX = {
-    "file_path": "apps/overlays/dev/kustomization.yaml",
-    "new_content": 'images:\n  - name: sample-api\n    newTag: "ed01aa4"\n',
-    "title": "Volver sample-api dev a ed01aa4",
-    "explanation": "La imagen v9.9.9 no existe; ed01aa4 es la que funciona en prod.",
-    "diff": '-    newTag: "v9.9.9"\n+    newTag: "ed01aa4"\n',
-    "base_blob_sha": "abc123",
-    "summary": "Propuesta: cambiar apps/overlays/dev/kustomization.yaml",
-}
-TITLES = {
-    "list_pods": "Ver pods",
-    "get_pod_events": "Leer eventos del pod",
-    "propose_fix": "Proponer arreglo",
-}
-
-
-class FakeToolBox:
-    """What the agent needs from a ToolBox: the model's tools, titles and canned outcomes."""
-
-    def __init__(self, **outcomes: ToolOutcome):
-        self.outcomes = outcomes
-        self.calls: list[tuple[str, dict]] = []
-
-    def model_tools(self) -> list[dict]:
-        return [
-            {"name": name, "description": f"{name} tool", "input_schema": {"type": "object"}}
-            for name in TITLES
-        ]
-
-    def title(self, name: str) -> str:
-        return TITLES.get(name, name)
-
-    async def call(self, name: str, arguments: dict) -> ToolOutcome:
-        self.calls.append((name, arguments))
-        return self.outcomes[name]
 
 
 async def run(conversation, question, toolbox, llm, max_steps=15) -> list:

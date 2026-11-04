@@ -40,7 +40,11 @@ class ScriptedLLM:
     def __init__(self, *script):
         self.script = list(script)
         self.calls: list[dict] = []
+        self.closed = False
         self.beta = SimpleNamespace(messages=SimpleNamespace(create=self._create))
+
+    async def close(self) -> None:
+        self.closed = True
 
     async def _create(self, **request):
         # A deep copy, so a later in-place edit of the history would show up as a difference.
