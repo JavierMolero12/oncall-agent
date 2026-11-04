@@ -119,7 +119,7 @@
       <span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span>
       <span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span></span>
     </div>
-    <p class="progress-label">12 de 13 tareas hechas · 129 tests en verde · la 13, el ensayo, la hacemos juntos</p>
+    <p class="progress-label">12 de 13 tareas hechas · 131 tests en verde · la 13, el ensayo, la hacemos juntos</p>
   </header>
 
   <nav class="toc" aria-label="Apartados">
@@ -464,6 +464,7 @@ data: {}</code></pre>
         <p><span class="label">Por qué el PR lo abre el backend</span><br>Cualquiera puede mandar un POST desde el navegador con lo que quiera. Por eso la ruta del PR solo acepta el id de una propuesta que el servidor creó; el fichero, el contenido y el blob sha salen de lo guardado.</p>
         <p><span class="label">Candados</span><br>Uno para el chat: una respuesta cada vez («Ya estoy respondiendo a otra pregunta»). Otro para el PR: si pulsas dos veces a la vez, se abre un solo PR y la segunda vez recibes el mismo.</p>
         <p><span class="label"><code>aclosing</code></span><br>Si cierras la pestaña a mitad de respuesta, uvicorn lo nota y el generador se cierra. <code>aclosing</code> garantiza que <code>run_turn</code> haga su marcha atrás del historial <b>antes</b> de soltar el candado.</p>
+        <p><span class="label">Solo para tu ordenador</span><br>El servidor escucha en <code>127.0.0.1</code> y además solo responde si la petición va dirigida a <code>127.0.0.1</code> o <code>localhost</code>. Sin esa segunda comprobación, una web de otro dominio que apunte a <code>127.0.0.1</code> (<i>DNS rebinding</i>) podría usar el chat y abrir PRs con tu token. Lo encontré en la revisión final.</p>
       </div>
     </details>
     <details class="quiz">

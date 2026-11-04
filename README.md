@@ -78,7 +78,9 @@ flowchart LR
   new branch. There is no tool to merge, approve or push to `main`.
 - **Two human gates:** you press the button, and you merge the pull request.
 - **Secrets** live in a local `.env` that Git ignores; `.env.example` shows the variables.
-- **The web page has no login,** so the server only listens on `127.0.0.1`.
+- **The web page has no login,** so the server only listens on `127.0.0.1` and only answers
+  requests addressed to `127.0.0.1` or `localhost`. The second check stops DNS rebinding: a
+  page on another domain that resolves to `127.0.0.1` cannot use the API.
 
 ### Known limitations (v1)
 

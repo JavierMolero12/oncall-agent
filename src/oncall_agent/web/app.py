@@ -18,6 +18,7 @@ from typing import Any
 
 import anthropic
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -42,6 +43,9 @@ from oncall_agent.toolbox import ToolBox, connect_toolbox
 from oncall_agent.tools import cluster
 
 STATIC_DIR = Path(__file__).parent / "static"
+# The page has no login and only listens on 127.0.0.1. Checking the Host header as well stops
+# DNS rebinding: a page on another domain that resolves to 127.0.0.1 gets a 400.
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 WATCHED_ENVIRONMENT = "dev"  # the fixes only ever change the dev overlay
 SSE_HEADERS = {"Cache-Control": "no-cache"}
 UNEXPECTED = "Mira la terminal donde lo arrancaste."
@@ -123,6 +127,7 @@ def create_app(
                     await app.state.llm.close()
 
     app = FastAPI(title="oncall-agent", lifespan=lifespan)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     def find_proposal(proposal_id: str) -> Proposal:

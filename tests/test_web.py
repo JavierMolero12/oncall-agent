@@ -16,6 +16,7 @@ from oncall_agent.toolbox import ToolOutcome
 from oncall_agent.web.app import ChatRequest, RecoveryDeps, create_app
 
 KEYS = {"ANTHROPIC_API_KEY": "sk-ant-test", "GITHUB_TOKEN": "github_pat_test"}
+LOCAL = "http://127.0.0.1:8765"  # the address the browser uses
 LIST_DEV = tool_use("list_pods", {"environment": "dev"})
 FIX_ARGUMENTS = {key: FIX[key] for key in ("file_path", "new_content", "title", "explanation")}
 PROPOSED = ToolOutcome(ok=True, data=FIX, text="{}")
@@ -76,7 +77,7 @@ async def served(app):
     """Like TestClient, but async, so that two requests can be in flight at the same time."""
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx.AsyncClient(transport=transport, base_url=LOCAL) as client:
             yield client
 
 
@@ -113,7 +114,7 @@ class GatedToolBox(FakeToolBox):
 
 
 def test_index_served_in_spanish():
-    with TestClient(make_app()) as client:
+    with TestClient(make_app(), base_url=LOCAL) as client:
         page = client.get("/")
 
     assert page.status_code == 200
@@ -123,8 +124,22 @@ def test_index_served_in_spanish():
     assert '<html lang="es">' in page.text
 
 
+def test_a_page_on_another_host_cannot_use_the_api():
+    # DNS rebinding: evil.example resolves to 127.0.0.1, so a browser sends its requests here,
+    # with the Host header of the other site.
+    with TestClient(make_app(), base_url="http://evil.example:8765") as client:
+        assert client.get("/api/status").status_code == 400
+        assert client.post("/api/chat", json={"message": "hola"}).status_code == 400
+
+
+def test_the_app_answers_on_its_local_names():
+    for host in ("127.0.0.1:8765", "localhost:8765"):
+        with TestClient(make_app(), base_url=f"http://{host}") as client:
+            assert client.get("/api/status").status_code == 200
+
+
 def test_the_page_scripts_and_styles_are_served():
-    with TestClient(make_app()) as client:
+    with TestClient(make_app(), base_url=LOCAL) as client:
         script = client.get("/static/app.js")
         styles = client.get("/static/styles.css")
 
@@ -136,7 +151,7 @@ def test_the_page_scripts_and_styles_are_served():
 
 def test_status_endpoint_shape():
     stuck = EnvironmentStatus("dev", "sample-api-dev", Health.STUCK, 1, 2, "1 de 2 pods listos")
-    with TestClient(make_app(statuses=lambda: [stuck])) as client:
+    with TestClient(make_app(statuses=lambda: [stuck]), base_url=LOCAL) as client:
         response = client.get("/api/status")
 
     assert response.status_code == 200
@@ -160,7 +175,7 @@ def test_status_endpoint_shape():
 def test_chat_streams_agent_events():
     llm = ScriptedLLM(reply(LIST_DEV, stop_reason="tool_use"), *propose_script())
     toolbox = FakeToolBox(list_pods=PODS_OK, propose_fix=PROPOSED)
-    with TestClient(make_app(toolbox, llm)) as client:
+    with TestClient(make_app(toolbox, llm), base_url=LOCAL) as client:
         response = client.post("/api/chat", json={"message": "¿Por qué falla dev?"})
 
     events = sse(response)
@@ -196,7 +211,7 @@ def test_chat_streams_agent_events():
 
 def test_chat_without_api_key_reports_spanish_error():
     llm = ScriptedLLM()  # an empty script: any call to the model would fail the test
-    with TestClient(make_app(llm=llm, env={"GITHUB_TOKEN": "t"})) as client:
+    with TestClient(make_app(llm=llm, env={"GITHUB_TOKEN": "t"}), base_url=LOCAL) as client:
         response = client.post("/api/chat", json={"message": "Hola"})
 
     assert sse(response) == [
@@ -261,7 +276,7 @@ def test_an_unexpected_failure_still_ends_the_stream():
         reply(text("Dev está sano.")),
     )
     toolbox = FakeToolBox(list_pods=RuntimeError("el servidor MCP se ha cerrado"))
-    with TestClient(make_app(toolbox, llm)) as client:
+    with TestClient(make_app(toolbox, llm), base_url=LOCAL) as client:
         broken = client.post("/api/chat", json={"message": "¿Dev?"})
         toolbox.outcomes["list_pods"] = PODS_OK
         retried = client.post("/api/chat", json={"message": "¿Y ahora?"})
@@ -283,7 +298,7 @@ def test_an_unexpected_failure_still_ends_the_stream():
 
 def test_reset_starts_a_new_conversation():
     llm = ScriptedLLM(reply(text("Hola.")), reply(text("No te conozco.")))
-    with TestClient(make_app(llm=llm)) as client:
+    with TestClient(make_app(llm=llm), base_url=LOCAL) as client:
         client.post("/api/chat", json={"message": "Hola"})
         reset = client.post("/api/conversation/reset")
         client.post("/api/chat", json={"message": "¿Me recuerdas?"})
@@ -307,7 +322,7 @@ def test_the_toolbox_opens_once_and_the_model_client_closes_at_shutdown():
         statuses=list,
         recovery_deps=NO_RECOVERY,
     )
-    with TestClient(app) as client:
+    with TestClient(app, base_url=LOCAL) as client:
         client.post("/api/chat", json={"message": "Uno"})
         client.post("/api/chat", json={"message": "Dos"})
         assert not llm.closed
@@ -321,7 +336,7 @@ def test_the_toolbox_opens_once_and_the_model_client_closes_at_shutdown():
 
 def test_open_pr_uses_stored_proposal():
     toolbox = FakeToolBox(propose_fix=PROPOSED, open_pull_request=PR_OPENED)
-    with TestClient(make_app(toolbox, ScriptedLLM(*propose_script()))) as client:
+    with TestClient(make_app(toolbox, ScriptedLLM(*propose_script())), base_url=LOCAL) as client:
         fix_id = proposal_id(client.post("/api/chat", json={"message": "Arréglalo"}))
         # Whatever the browser sends is ignored: the id alone picks the stored proposal.
         url = f"/api/proposals/{fix_id}/pull-request"
@@ -343,7 +358,7 @@ def test_open_pr_uses_stored_proposal():
 
 def test_open_pr_twice_returns_same_pr():
     toolbox = FakeToolBox(propose_fix=PROPOSED, open_pull_request=PR_OPENED)
-    with TestClient(make_app(toolbox, ScriptedLLM(*propose_script()))) as client:
+    with TestClient(make_app(toolbox, ScriptedLLM(*propose_script())), base_url=LOCAL) as client:
         fix_id = proposal_id(client.post("/api/chat", json={"message": "Arréglalo"}))
         url = f"/api/proposals/{fix_id}/pull-request"
         first, second = client.post(url), client.post(url)
@@ -372,7 +387,7 @@ async def test_two_clicks_at_once_open_one_pr():
 def test_open_pr_without_token_is_400():
     toolbox = FakeToolBox(propose_fix=PROPOSED, open_pull_request=PR_OPENED)
     env = {"ANTHROPIC_API_KEY": "sk-ant-test"}
-    with TestClient(make_app(toolbox, ScriptedLLM(*propose_script()), env=env)) as client:
+    with TestClient(make_app(toolbox, ScriptedLLM(*propose_script()), env=env), base_url=LOCAL) as client:
         fix_id = proposal_id(client.post("/api/chat", json={"message": "Arréglalo"}))
         response = client.post(f"/api/proposals/{fix_id}/pull-request")
 
@@ -382,7 +397,7 @@ def test_open_pr_without_token_is_400():
 
 
 def test_open_pr_for_an_unknown_proposal_is_404():
-    with TestClient(make_app()) as client:
+    with TestClient(make_app(), base_url=LOCAL) as client:
         response = client.post("/api/proposals/nope/pull-request")
 
     assert response.status_code == 404
@@ -396,7 +411,7 @@ def test_a_refused_pr_is_409_with_the_tool_message_and_can_be_retried():
         ok=False, data=None, text="El fichero ha cambiado en main desde la propuesta."
     )
     toolbox = FakeToolBox(propose_fix=PROPOSED, open_pull_request=refused)
-    with TestClient(make_app(toolbox, ScriptedLLM(*propose_script()))) as client:
+    with TestClient(make_app(toolbox, ScriptedLLM(*propose_script())), base_url=LOCAL) as client:
         fix_id = proposal_id(client.post("/api/chat", json={"message": "Arréglalo"}))
         url = f"/api/proposals/{fix_id}/pull-request"
         response = client.post(url)
@@ -438,7 +453,7 @@ def test_watch_streams_recovery_updates():
         return EnvironmentStatus(environment, "sample-api-dev", Health.HEALTHY, 1, 1, "1 de 1")
 
     recovery = RecoveryDeps(get_pr, get_app, get_status, poll_seconds=0)
-    with TestClient(opened_pr_app(recovery)) as client:
+    with TestClient(opened_pr_app(recovery), base_url=LOCAL) as client:
         fix_id = open_pr(client)
         response = client.get(f"/api/proposals/{fix_id}/watch")
 
@@ -469,7 +484,7 @@ def test_watch_streams_recovery_updates():
 
 def test_watch_needs_an_opened_pr():
     toolbox = FakeToolBox(propose_fix=PROPOSED)
-    with TestClient(make_app(toolbox, ScriptedLLM(*propose_script()))) as client:
+    with TestClient(make_app(toolbox, ScriptedLLM(*propose_script())), base_url=LOCAL) as client:
         fix_id = proposal_id(client.post("/api/chat", json={"message": "Arréglalo"}))
         not_opened = client.get(f"/api/proposals/{fix_id}/watch")
         unknown = client.get("/api/proposals/nope/watch")
@@ -483,7 +498,7 @@ def test_a_watch_that_breaks_still_ends_with_a_final_update():
     def broken(_number):
         raise KeyError("merge_commit_sha")
 
-    with TestClient(opened_pr_app(RecoveryDeps(broken, never, never))) as client:
+    with TestClient(opened_pr_app(RecoveryDeps(broken, never, never)), base_url=LOCAL) as client:
         fix_id = open_pr(client)
         response = client.get(f"/api/proposals/{fix_id}/watch")
 
