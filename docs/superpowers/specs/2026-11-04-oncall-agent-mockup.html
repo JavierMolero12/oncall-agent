@@ -1,0 +1,109 @@
+<h2>B + C juntas, todo en español</h2>
+<p class="subtitle">Chat a la izquierda y, a la derecha, el estado del clúster en vivo arriba y los pasos del agente abajo. Abajo tienes dos momentos de la demo: el diagnóstico y después de aprobar el arreglo.</p>
+
+<style>
+  .m { font-family: system-ui, sans-serif; font-size: 13px; line-height: 1.45; color: #1f2328; background: #fff; border-radius: 8px; overflow: hidden; border: 1px solid #d0d7de; }
+  .m .bar { background: #0b1f3a; color: #e6edf3; padding: 8px 12px; font-weight: 600; font-size: 12px; display: flex; justify-content: space-between; }
+  .m .bar span { font-weight: 400; opacity: .75; }
+  .row { display: flex; min-height: 330px; }
+  .chat { width: 56%; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .u { align-self: flex-end; background: #0969da; color: #fff; padding: 7px 10px; border-radius: 12px 12px 2px 12px; max-width: 85%; }
+  .a { align-self: flex-start; background: #f6f8fa; border: 1px solid #d0d7de; padding: 8px 10px; border-radius: 12px 12px 12px 2px; max-width: 95%; }
+  .btn { display: inline-block; margin-top: 6px; background: #1a7f37; color: #fff; padding: 5px 10px; border-radius: 6px; font-weight: 600; font-size: 12px; }
+  .btn.ghost { background: #fff; color: #0969da; border: 1px solid #0969da; }
+  .input { margin-top: auto; border: 1px solid #d0d7de; border-radius: 8px; padding: 7px 10px; color: #8c959f; }
+  .side { width: 44%; background: #f6f8fa; border-left: 1px solid #d0d7de; font-size: 12px; display: flex; flex-direction: column; }
+  .box { padding: 10px; }
+  .box + .box { border-top: 1px solid #d0d7de; }
+  .box h5 { margin: 0 0 6px; font-size: 11px; color: #57606a; text-transform: uppercase; letter-spacing: .04em; }
+  .env { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+  .sub { color: #57606a; font-size: 11px; margin-bottom: 4px; }
+  .pill { padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .p-red { background: #ffebe9; color: #cf222e; } .p-green { background: #dafbe1; color: #1a7f37; } .p-amber { background: #fff8c5; color: #9a6700; }
+  .st div { padding: 4px 0; border-bottom: 1px dashed #d0d7de; }
+  .st div:last-child { border-bottom: 0; }
+  .st b { font-weight: 600; }
+  .bad { color: #cf222e; font-weight: 600; } .ok { color: #1a7f37; font-weight: 600; } .warn { color: #9a6700; font-weight: 600; }
+  .pr { border: 1px solid #d0d7de; background: #fff; border-radius: 6px; padding: 6px 8px; margin-top: 6px; font-size: 12px; }
+</style>
+
+<div class="split">
+
+  <div class="mockup">
+    <div class="mockup-header">Momento 1 · Has roto dev y preguntas</div>
+    <div class="mockup-body">
+      <div class="m">
+        <div class="bar">Agente de guardia <span>clúster gitops-demo</span></div>
+        <div class="row">
+          <div class="chat">
+            <div class="u">¿Qué le pasa a sample-api en dev?</div>
+            <div class="a">
+              <b>La imagen <code>sample-api:v9.9.9</code> no existe en GHCR.</b><br>
+              El último commit en <code>gitops-manifests</code> (<code>3f1c2a</code>) cambió la etiqueta de dev a una versión que nunca se construyó, así que Kubernetes no puede descargarla.<br><br>
+              <b>Propuesta:</b> volver a <code>ed01aa4</code>, la versión que funciona en prod.
+              <br><span class="btn">Abrir Pull Request con el arreglo</span>
+            </div>
+            <div class="input">Escribe una pregunta…</div>
+          </div>
+          <div class="side">
+            <div class="box">
+              <h5>Estado del clúster · en vivo</h5>
+              <div class="env"><span>sample-api-dev</span><span class="pill p-red">Con fallos</span></div>
+              <div class="sub">0 de 1 pods listos</div>
+              <div class="env"><span>sample-api-prod</span><span class="pill p-green">Sano</span></div>
+              <div class="sub">3 de 3 pods listos · CPU 1 %</div>
+              <div class="env"><span>monitoring</span><span class="pill p-green">Sano</span></div>
+            </div>
+            <div class="box st">
+              <h5>Pasos del agente</h5>
+              <div>1 · <b>Consultar Argo CD</b> (dev)<br><span class="warn">Sincronizado, pero con fallos</span></div>
+              <div>2 · <b>Ver pods</b> (dev)<br><span class="bad">ImagePullBackOff</span></div>
+              <div>3 · <b>Leer eventos</b> del pod<br>"imagen no encontrada"</div>
+              <div>4 · <b>Revisar historial de Git</b><br>commit <code>3f1c2a</code> cambió la etiqueta</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Momento 2 · Apruebas el PR y Argo CD lo aplica</div>
+    <div class="mockup-body">
+      <div class="m">
+        <div class="bar">Agente de guardia <span>clúster gitops-demo</span></div>
+        <div class="row">
+          <div class="chat">
+            <div class="u">Ábrelo</div>
+            <div class="a">
+              He abierto el Pull Request. <b>No se aplicará hasta que tú lo apruebes.</b>
+              <div class="pr"><b>#7 · Volver sample-api dev a ed01aa4</b><br><span style="color:#57606a">gitops-manifests · apps/overlays/dev</span></div>
+              <span class="btn ghost">Ver en GitHub</span>
+            </div>
+            <div class="a">
+              <span class="ok">Resuelto.</span> Argo CD ha aplicado el cambio y el pod nuevo ya está listo. Dev vuelve a estar sano.
+            </div>
+            <div class="input">Escribe una pregunta…</div>
+          </div>
+          <div class="side">
+            <div class="box">
+              <h5>Estado del clúster · en vivo</h5>
+              <div class="env"><span>sample-api-dev</span><span class="pill p-green">Sano</span></div>
+              <div class="sub">1 de 1 pods listos</div>
+              <div class="env"><span>sample-api-prod</span><span class="pill p-green">Sano</span></div>
+              <div class="sub">3 de 3 pods listos · CPU 1 %</div>
+              <div class="env"><span>monitoring</span><span class="pill p-green">Sano</span></div>
+            </div>
+            <div class="box st">
+              <h5>Pasos del agente</h5>
+              <div>5 · <b>Abrir Pull Request</b><br>#7 en gitops-manifests</div>
+              <div>6 · <b>Esperar aprobación</b><br><span class="ok">Aprobado y fusionado por ti</span></div>
+              <div>7 · <b>Comprobar Argo CD</b> (dev)<br><span class="ok">Sincronizado y sano</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
