@@ -112,14 +112,26 @@ class GatedToolBox(FakeToolBox):
 # -- page and status ----------------------------------------------------------------------------
 
 
-def test_page_and_static_files_are_served():
+def test_index_served_in_spanish():
     with TestClient(make_app()) as client:
         page = client.get("/")
-        static = client.get("/static/index.html")
 
     assert page.status_code == 200
     assert page.headers["content-type"].startswith("text/html")
-    assert static.status_code == 200
+    for title in ("Agente de guardia", "Estado del clúster", "Pasos del agente"):
+        assert title in page.text
+    assert '<html lang="es">' in page.text
+
+
+def test_the_page_scripts_and_styles_are_served():
+    with TestClient(make_app()) as client:
+        script = client.get("/static/app.js")
+        styles = client.get("/static/styles.css")
+
+    assert script.status_code == 200
+    assert "javascript" in script.headers["content-type"]
+    assert styles.status_code == 200
+    assert styles.headers["content-type"].startswith("text/css")
 
 
 def test_status_endpoint_shape():
@@ -132,6 +144,7 @@ def test_status_endpoint_shape():
         "environments": [
             {
                 "environment": "dev",
+                "namespace": "sample-api-dev",  # what the panel shows, as in the mockup
                 "health": "Actualización atascada",
                 "ready_pods": 1,
                 "total_pods": 2,

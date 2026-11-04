@@ -143,6 +143,7 @@ def create_app(
         environments = [
             {
                 "environment": s.environment,
+                "namespace": s.namespace,
                 "health": str(s.health),
                 "ready_pods": s.ready_pods,
                 "total_pods": s.total_pods,

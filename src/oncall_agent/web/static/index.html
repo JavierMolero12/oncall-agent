@@ -1,10 +1,52 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8">
-    <title>Agente de guardia</title>
-  </head>
-  <body>
-    <p>Agente de guardia. La interfaz del chat llega en la tarea 11.</p>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agente de guardia · gitops-demo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="bar">
+    <h1>Agente de guardia</h1>
+    <div class="bar-right">
+      <span class="cluster">clúster gitops-demo</span>
+      <button type="button" id="reset-button" class="bar-button">Nueva conversación</button>
+    </div>
+  </header>
+
+  <main class="row">
+    <section class="chat" aria-label="Conversación">
+      <div id="chat-log" class="log" aria-live="polite"></div>
+      <form id="chat-form" class="composer">
+        <label for="chat-input" class="visually-hidden">Pregunta</label>
+        <input id="chat-input" name="message" type="text" placeholder="Escribe una pregunta…"
+               autocomplete="off" required>
+        <button type="submit" id="send-button">Enviar</button>
+      </form>
+    </section>
+
+    <aside class="side">
+      <section id="status-panel" class="box" aria-label="Estado del clúster">
+        <h2>Estado del clúster · en vivo</h2>
+        <div id="status-list"><p class="sub">Consultando el clúster…</p></div>
+      </section>
+      <section id="steps-panel" class="box steps" aria-label="Pasos del agente">
+        <h2>Pasos del agente</h2>
+        <ol id="steps-list" class="st"></ol>
+        <p id="steps-empty" class="sub">Aquí verás cada herramienta que usa el agente y lo que encuentra.</p>
+      </section>
+    </aside>
+  </main>
+
+  <template id="welcome">
+    <div class="a">
+      <p>Hola. Soy el agente de guardia del clúster <b>gitops-demo</b>: investigo con herramientas de
+        solo lectura y te propongo el arreglo como Pull Request.</p>
+      <p>Prueba, por ejemplo: <i>«¿Qué le pasa a sample-api en dev?»</i></p>
+    </div>
+  </template>
+</body>
 </html>
