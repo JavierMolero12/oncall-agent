@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oncall-agent"
+version = "0.1.0"
+description = "An on-call AI agent that diagnoses a GitOps Kubernetes cluster and proposes fixes as pull requests."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "anthropic",
+    "mcp",
+    "kubernetes",
+    "httpx",
+    "fastapi",
+    "uvicorn",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["docs"]
