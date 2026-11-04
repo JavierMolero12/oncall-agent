@@ -116,14 +116,14 @@
     <h1>Guía de oncall-agent</h1>
     <p class="lede">Un agente de guardia que mira tu clúster, encuentra por qué falla <code>sample-api</code> en dev y te propone el arreglo como Pull Request. Cada apartado tiene un esquema de 3 o 4 pasos y un desplegable con cómo funciona por dentro.</p>
     <div class="progress" aria-hidden="true">
-      <span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span>
-      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      <span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span>
+      <span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span></span>
     </div>
-    <p class="progress-label">5 de 13 tareas hechas · 44 tests en verde · se actualiza mientras construyo</p>
+    <p class="progress-label">12 de 13 tareas hechas · 129 tests en verde · la 13, el ensayo, la hacemos juntos</p>
   </header>
 
   <nav class="toc" aria-label="Apartados">
-    <a href="#mapa">Mapa</a><a href="#t1">1 Config</a><a href="#t2">2 Estado</a><a href="#t3">3 Clúster</a><a href="#t4">4 Eventos</a><a href="#t5">5 Git</a><a href="#t6">6 PR</a><a href="#t7">7 MCP</a><a href="#t8">8 Agente</a><a href="#t9">9 Recuperación</a><a href="#t10">10 Web</a><a href="#t11">11 Interfaz</a><a href="#t12">12 Demo</a><a href="#t13">13 Ensayo</a>
+    <a href="#mapa">Mapa</a><a href="#t1">1 Config</a><a href="#t2">2 Estado</a><a href="#t3">3 Clúster</a><a href="#t4">4 Eventos</a><a href="#t5">5 Git</a><a href="#t6">6 PR</a><a href="#t7">7 MCP</a><a href="#t8">8 Agente</a><a href="#t9">9 Recuperación</a><a href="#t10">10 Web</a><a href="#t11">11 Interfaz</a><a href="#t12">12 Demo</a><a href="#t13">13 Ensayo</a><a href="#tu-turno">Te toca</a>
   </nav>
 
   <!-- ===================== MAPA ===================== -->
@@ -306,37 +306,274 @@ Cambia apps/overlays/dev/kustomization.yaml
     </details>
   </section>
 
-  <!-- ===================== PENDIENTES ===================== -->
+  <!-- ===================== TAREA 6 ===================== -->
   <section class="task" id="t6">
-    <div class="task-head"><span class="num">6</span><h2>Proponer el arreglo y abrir el PR</h2><span class="chip todo">En construcción</span></div>
-    <p class="purpose pending">La única escritura del agente, limitada a <code>apps/overlays/dev/</code>.</p>
+    <div class="task-head"><span class="num">6</span><h2>Proponer el arreglo y abrir el PR</h2><span class="chip done">Hecho</span></div>
+    <p class="purpose">La única escritura del proyecto, partida en dos: el modelo <b>propone</b> y tú <b>decides</b>.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b>Leer manifiesto</b><span>El agente lee el fichero tal como está en <code>main</code>.</span></li>
+      <li class="box"><b>Proponer arreglo</b><span>Revisa la propuesta y calcula el diff. <b>No escribe nada.</b></span></li>
+      <li class="box"><b>Tu botón</b><span>Antes de escribir, comprueba que <code>main</code> no ha cambiado (blob sha).</span></li>
+      <li class="box"><b>Rama nueva y PR</b><span><code>oncall-agent/fix-&lt;fecha&gt;</code>, un commit y un PR contra <code>main</code>.</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo funciona</summary>
+      <div class="details-body">
+        <p><code>propose_fix</code> recibe el fichero <b>entero</b> con el cambio, no solo la línea. Lo rechaza, con el motivo en español, si:</p>
+        <ol>
+          <li>la ruta no está dentro de <code>apps/overlays/dev/</code> (o lleva <code>..</code>, o es absoluta);</li>
+          <li>falta el título o la explicación, o el YAML no es válido;</li>
+          <li>el contenido es igual al de <code>main</code>: «La propuesta no cambia nada».</li>
+        </ol>
+        <p>Si todo está bien, devuelve el diff que ves en pantalla y el blob sha del fichero que leyó. Con dev roto, el diff será:</p>
+        <pre><code>--- a/apps/overlays/dev/kustomization.yaml
++++ b/apps/overlays/dev/kustomization.yaml
+-    newTag: "v9.9.9"
++    newTag: "ed01aa462622ba11c87c77902dd1f4f63819a249"</code></pre>
+        <p><span class="label">Al pulsar el botón</span><br><code>open_pull_request</code> vuelve a comprobar la ruta, lee el fichero en <code>main</code> y compara su blob sha con el de la propuesta. Si alguien lo cambió entretanto, se para: «El fichero ha cambiado en main desde la propuesta. Vuelve a pedir el diagnóstico.» Si no, crea la rama, hace un commit con el fichero propuesto y abre el PR con la explicación.</p>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Pregunta de entrevista: ¿y si el modelo intenta tocar prod?</summary>
+      <div class="details-body answer">
+        <p>No puede. La regla está en el código, no solo en el prompt: <code>propose_fix</code> rechaza cualquier ruta fuera de <code>apps/overlays/dev/</code> y <code>open_pull_request</code> lo vuelve a comprobar. El prompt se lo pide, pero un prompt es un consejo; el código es la valla. Y aunque pasara, sería un PR que tú tendrías que fusionar.</p>
+      </div>
+    </details>
   </section>
+
+  <!-- ===================== TAREA 7 ===================== -->
   <section class="task" id="t7">
-    <div class="task-head"><span class="num">7</span><h2>Servidor MCP</h2><span class="chip todo">En construcción</span></div>
-    <p class="purpose pending">Las herramientas detrás de un protocolo estándar.</p>
+    <div class="task-head"><span class="num">7</span><h2>Servidor MCP</h2><span class="chip done">Hecho</span></div>
+    <p class="purpose">Las 11 herramientas detrás de un protocolo estándar, para que cualquier cliente de IA pueda usarlas.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b>11 herramientas</b><span>Cada una con título en español y una etiqueta: solo lectura o abre PR.</span></li>
+      <li class="box"><b>Servidor MCP</b><span>Un proceso aparte que habla por stdio (entrada y salida estándar).</span></li>
+      <li class="box"><b>ToolBox</b><span>El cliente MCP del backend: arranca el servidor y le pasa las llamadas.</span></li>
+      <li class="box"><b>Al modelo, solo lectura</b><span><code>open_pull_request</code> nunca llega a Claude.</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo funciona</summary>
+      <div class="details-body">
+        <p>MCP (Model Context Protocol) define dos preguntas: «¿qué herramientas tienes?» (nombre, descripción y esquema JSON de los argumentos) y «ejecuta esta». Una herramienta es una función de Python con un decorador:</p>
+        <pre><code>@server.tool(title="Ver pods", annotations=READ_ONLY)
+def list_pods(environment: AgentEnvironment) -&gt; Result:
+    ...</code></pre>
+        <p>Del tipo de cada argumento sale el esquema: el modelo solo puede pedir entornos que existen. <code>guarded()</code> convierte cualquier fallo en un mensaje en español, así el modelo lee «No puedo conectar con el clúster: ¿está Docker arrancado?» en vez de un error de Python.</p>
+        <p><span class="label">El filtro</span><br>El backend pregunta al servidor qué herramientas hay y a Claude solo le pasa las de lectura:</p>
+        <pre><code>def model_tools(self):
+    return [... for t in self._tools.values() if t.read_only]</code></pre>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Pregunta de entrevista: ¿por qué MCP y no funciones normales?</summary>
+      <div class="details-body answer">
+        <p>Porque es un estándar: las mismas herramientas funcionan desde mi chat, desde Claude Code o desde Claude Desktop sin reescribirlas. Además separa responsabilidades: el servidor es otro proceso, que podría ir con otras credenciales o en otra máquina. El precio es un subproceso y un poco de protocolo.</p>
+      </div>
+    </details>
   </section>
+
+  <!-- ===================== TAREA 8 ===================== -->
   <section class="task" id="t8">
-    <div class="task-head"><span class="num">8</span><h2>El bucle del agente</h2><span class="chip todo">En construcción</span></div>
-    <p class="purpose pending">Modelo → herramienta → resultado → modelo, con límite de pasos.</p>
+    <div class="task-head"><span class="num">8</span><h2>El bucle del agente</h2><span class="chip done">Hecho</span></div>
+    <p class="purpose">El corazón: un bucle escrito a mano con el SDK de Anthropic, sin frameworks que lo escondan.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b>Pregunta e historial</b><span>Lo que ya se habló, más tu pregunta nueva.</span></li>
+      <li class="box"><b>Claude decide</b><span>Responde, o pide una herramienta: «quiero <code>list_pods(dev)</code>».</span></li>
+      <li class="box"><b>Ejecutar y devolver</b><span>El código la ejecuta y le manda el resultado. Vuelta al paso anterior.</span></li>
+      <li class="box"><b>Respuesta o límite</b><span>Acaba cuando responde, o a los 15 pasos para no gastar de más.</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo funciona</summary>
+      <div class="details-body">
+        <pre><code>for _ in range(max_steps):                      # 15 por defecto
+    respuesta = claude(SYSTEM_PROMPT, historial, herramientas_de_lectura)
+    historial.append(respuesta)                  # tal cual, con su razonamiento
+    if respuesta.stop_reason == "end_turn":
+        return respuesta.texto
+    for llamada in respuesta.herramientas_pedidas:
+        if llamada.name not in permitidas:       # nunca se la dimos
+            resultado = error("no existe esa herramienta")
+        else:
+            resultado = toolbox.call(llamada.name, llamada.input)
+        historial.append(resultado)</code></pre>
+        <p><span class="label">Defensa en profundidad</span><br>Tres capas, por si una falla: (1) el modelo solo recibe herramientas de lectura; (2) el bucle se niega a ejecutar un nombre que no ofreció; (3) la única escritura la llama el backend cuando tú pulsas el botón.</p>
+        <p><span class="label">Historial que solo crece, y marcha atrás</span><br>Si el turno falla o cierras la pestaña a mitad, se borra todo lo añadido en ese turno (<code>del history[start:]</code>). Así nunca queda una petición de herramienta sin su resultado, que la API rechazaría en la pregunta siguiente.</p>
+        <p><span class="label">Ajustes de la llamada</span><br>Modelo <code>claude-sonnet-5-5</code> (se cambia con <code>ONCALL_MODEL</code>), razonamiento adaptativo con esfuerzo medio, caché del prompt (el prompt y las herramientas se repiten en cada paso y así salen más baratos) y un beta que reintenta en otro modelo algunas negativas.</p>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Pregunta de entrevista: ¿y si el modelo se equivoca?</summary>
+      <div class="details-body answer">
+        <p>Solo puede leer y proponer. Un diagnóstico equivocado se nota, porque cita la evidencia y puedes comprobarla. Un arreglo equivocado es un diff que revisas y un PR que puedes cerrar. El límite de pasos acota el gasto, y si todo se tuerce está el script de restaurar. La IA propone; las personas deciden.</p>
+        <p><b>¿Y si alguien mete instrucciones en un mensaje de commit?</b> (inyección de prompt). El modelo lo leería, pero no tiene herramientas de escritura y la página pinta su texto como texto, nunca como HTML. Lo peor que puede pasar es una propuesta rara que tú no fusionas.</p>
+      </div>
+    </details>
   </section>
+
+  <!-- ===================== TAREA 9 ===================== -->
   <section class="task" id="t9">
-    <div class="task-head"><span class="num">9</span><h2>Vigilante de recuperación</h2><span class="chip todo">En construcción</span></div>
-    <p class="purpose pending">Después del PR: ¿se fusionó, lo aplicó Argo CD, vuelve a estar sano?</p>
+    <div class="task-head"><span class="num">9</span><h2>Vigilante de recuperación</h2><span class="chip done">Hecho</span></div>
+    <p class="purpose">Después del PR, el agente no da nada por hecho: comprueba cada paso hasta ver dev sano.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b>¿PR fusionado?</b><span>Pregunta a GitHub cada 5 segundos.</span></li>
+      <li class="box"><b>¿Argo CD aplicó <i>ese</i> commit?</b><span>La revisión de la app tiene que ser el commit del merge.</span></li>
+      <li class="box"><b>¿dev está sano?</b><span>El mismo cálculo que el panel de estado.</span></li>
+      <li class="box"><b>Resuelto</b><span>O «cerraste el PR sin fusionarlo», o 15 minutos sin recuperarse.</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo funciona</summary>
+      <div class="details-body">
+        <pre><code>if app["revision"] == sha and app["sync_status"] == "Synced":
+    # "Synced" solo no basta: tiene que ser el commit de este merge
+    yield RecoveryUpdate("synced", f"Argo CD ha aplicado el commit {sha[:7]}.", False)</code></pre>
+        <p><span class="label">Por qué el commit del merge</span><br>Justo después de fusionar, Argo CD sigue diciendo «Synced»… pero con el commit <b>viejo</b>, porque aún no ha mirado Git. Si solo mirásemos «Synced», diríamos «Resuelto» antes de que se aplicara nada.</p>
+        <p>Cada etapa se anuncia una sola vez. Si el clúster o GitHub fallan un momento, sigue intentándolo y guarda el último error para el mensaje final.</p>
+        <p><span class="label">Una limitación que conviene contar</span><br>Si justo después de tu merge entra otro commit en <code>main</code> (por ejemplo, la CI de <code>sample-api</code> reescribiendo <code>newTag</code>), Argo CD puede saltar directo a ese commit más nuevo. La revisión nunca coincide con la del merge y el vigilante espera hasta los 15 minutos: «Revisa Argo CD». La mejora: aceptar cualquier revisión que <b>contenga</b> el merge, preguntando a GitHub si es un antecesor.</p>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Pregunta de entrevista: ¿cómo sabes que el arreglo ha funcionado?</summary>
+      <div class="details-body answer">
+        <p>Con tres comprobaciones en orden, cada una con su evidencia: el PR está fusionado en GitHub, Argo CD ha sincronizado exactamente el commit de ese merge y los pods de dev vuelven a estar listos. Que Argo CD diga «Synced» no basta, porque puede referirse al commit anterior.</p>
+      </div>
+    </details>
   </section>
+
+  <!-- ===================== TAREA 10 ===================== -->
   <section class="task" id="t10">
-    <div class="task-head"><span class="num">10</span><h2>Backend web</h2><span class="chip todo">En construcción</span></div>
-    <p class="purpose pending">FastAPI con el chat en directo (SSE).</p>
+    <div class="task-head"><span class="num">10</span><h2>Backend web</h2><span class="chip done">Hecho</span></div>
+    <p class="purpose">FastAPI une las piezas: recibe tu pregunta, corre el bucle y te va mandando cada paso en directo.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b><code>POST /api/chat</code></b><span>Tu pregunta llega al servidor.</span></li>
+      <li class="box"><b><code>run_turn</code></b><span>El bucle produce eventos: paso empieza, paso termina, respuesta, propuesta.</span></li>
+      <li class="box"><b>SSE</b><span>Cada evento sale enseguida como texto: <code>event:</code>, <code>data:</code> y una línea en blanco.</span></li>
+      <li class="box"><b>Botón del PR</b><span>El navegador solo manda el id de la propuesta; el resto lo guarda el servidor.</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo funciona</summary>
+      <div class="details-body">
+        <p>SSE (Server-Sent Events) es una respuesta HTTP que no se cierra: el servidor va escribiendo eventos según ocurren.</p>
+        <pre><code>event: step_started
+data: {"index": 1, "tool": "list_pods", "title": "Ver pods", "arguments": {"environment": "dev"}}
+
+event: step_finished
+data: {"index": 1, "tool": "list_pods", "title": "Ver pods", "ok": true, ...}
+
+event: done
+data: {}</code></pre>
+        <p><span class="label">Por qué el PR lo abre el backend</span><br>Cualquiera puede mandar un POST desde el navegador con lo que quiera. Por eso la ruta del PR solo acepta el id de una propuesta que el servidor creó; el fichero, el contenido y el blob sha salen de lo guardado.</p>
+        <p><span class="label">Candados</span><br>Uno para el chat: una respuesta cada vez («Ya estoy respondiendo a otra pregunta»). Otro para el PR: si pulsas dos veces a la vez, se abre un solo PR y la segunda vez recibes el mismo.</p>
+        <p><span class="label"><code>aclosing</code></span><br>Si cierras la pestaña a mitad de respuesta, uvicorn lo nota y el generador se cierra. <code>aclosing</code> garantiza que <code>run_turn</code> haga su marcha atrás del historial <b>antes</b> de soltar el candado.</p>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Pregunta de entrevista: ¿por qué SSE y no WebSockets?</summary>
+      <div class="details-body answer">
+        <p>Porque solo necesito un sentido, del servidor al navegador. SSE es HTTP normal, se depura leyendo texto y <code>EventSource</code> se reconecta solo. WebSockets tiene sentido cuando los dos lados hablan todo el rato.</p>
+      </div>
+    </details>
   </section>
+
+  <!-- ===================== TAREA 11 ===================== -->
   <section class="task" id="t11">
-    <div class="task-head"><span class="num">11</span><h2>Interfaz</h2><span class="chip todo">En construcción</span></div>
-    <p class="purpose pending">La pantalla de la maqueta: chat, estado en vivo y pasos del agente.</p>
+    <div class="task-head"><span class="num">11</span><h2>Interfaz</h2><span class="chip done">Hecho</span></div>
+    <p class="purpose">La pantalla de la maqueta B+C: el chat a la izquierda; el estado en vivo y los pasos del agente a la derecha. Así viaja un paso hasta tu pantalla:</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b>Evento en Python</b><span><code>run_turn</code> avisa: «empieza el paso 1, Ver pods».</span></li>
+      <li class="box"><b>Texto SSE</b><span><code>sse()</code> lo escribe como <code>event:</code> + <code>data:</code>.</span></li>
+      <li class="box"><b><code>fetch</code> lee el chorro</b><span><code>readEvents</code> corta por líneas en blanco y <code>parseEvent</code> lo lee.</span></li>
+      <li class="box"><b><code>addStep</code></b><span>Pinta el paso en «Pasos del agente».</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo funciona</summary>
+      <div class="details-body">
+        <p>Sin framework ni paso de compilación: un HTML, un CSS y un JavaScript que sirve FastAPI. El panel de estado pregunta a <code>/api/status</code> cada 3 segundos; si el servidor no responde, lo dice.</p>
+        <p><span class="label">El texto del modelo nunca es HTML</span><br>Las respuestas se pintan creando nodos con <code>textContent</code>, nunca con <code>innerHTML</code>. Un pequeño analizador entiende <code>`código`</code> y <code>**negrita**</code>, y solo pone enlaces si van a <code>https://github.com/</code>. Así, aunque un commit trajera <code>&lt;script&gt;</code>, se vería como texto.</p>
+        <p><span class="label">Comprobado en el navegador</span><br>Con un modelo de mentira (sin gastar API) recorrí el flujo entero. Salieron dos fallos y están arreglados: una negrita con código dentro dejaba los <code>**</code> a la vista, y en pantalla estrecha quedaba un hueco vacío.</p>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Pregunta de entrevista: ¿cómo evitas que el modelo meta código en tu página?</summary>
+      <div class="details-body answer">
+        <p>Tratando su texto como datos: lo pinto con <code>textContent</code>, nunca con <code>innerHTML</code>, solo entiendo dos formatos (código y negrita) y solo enlazo a GitHub. Importa porque el modelo repite cosas que lee del clúster y de Git, y eso podría escribirlo un atacante.</p>
+      </div>
+    </details>
   </section>
+
+  <!-- ===================== TAREA 12 ===================== -->
   <section class="task" id="t12">
-    <div class="task-head"><span class="num">12</span><h2>Scripts de la demo</h2><span class="chip todo">En construcción</span></div>
-    <p class="purpose pending">Romper dev con un commit, restaurarlo, y acelerar a Argo CD.</p>
+    <div class="task-head"><span class="num">12</span><h2>Scripts de la demo</h2><span class="chip done">Hecho</span></div>
+    <p class="purpose">Tus herramientas, no las del agente: rompen y arreglan dev con commits directos a <code>main</code>, como haría una persona.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b><code>break image</code></b><span>Commit en <code>main</code>: <code>newTag: "v9.9.9"</code>, un tag que no existe.</span></li>
+      <li class="box"><b>Argo CD, 30 s</b><span>Ve el commit y lo aplica, como cualquier otro.</span></li>
+      <li class="box"><b>dev atascada</b><span>El pod nuevo no encuentra la imagen; el viejo sigue sirviendo.</span></li>
+      <li class="box"><b><code>restore</code></b><span>Vuelve al tag que corre en prod, también con un commit.</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo funciona</summary>
+      <div class="details-body">
+        <p><code>set_image_tag()</code> cambia solo el valor de la línea <code>newTag:</code> y conserva las comillas. La búsqueda empieza al principio de la línea, así el comentario del fichero que menciona «newTag» no cuenta. Si no hay ninguna línea, o hay dos, se niega a adivinar.</p>
+        <p><span class="label">Argo CD a 30 segundos</span><br><code>setup_argocd_polling.py</code> pone <code>timeout.reconciliation: 30s</code> en el ConfigMap <code>argocd-cm</code> y reinicia los dos componentes que lo leen. Salida real en tu clúster:</p>
+        <pre><code>argocd-cm timeout.reconciliation = 30s
+He reiniciado argocd-application-controller y argocd-repo-server para que lean el nuevo valor.
+NAME              SYNC     HEALTH
+monitoring        Synced   Healthy
+root              Synced   Healthy
+sample-api-dev    Synced   Healthy
+sample-api-prod   Synced   Healthy</code></pre>
+        <p><span class="label">Dos detalles finos</span><br>El cliente de Kubernetes para Python, si le das un diccionario, lo manda como JSON Patch (una lista de operaciones) y fallaría; por eso se le indica <code>application/merge-patch+json</code>. Y «reiniciar» es lo mismo que hace <code>kubectl rollout restart</code>: cambiar una anotación de la plantilla del pod para que Kubernetes cree pods nuevos.</p>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Tus dos preguntas de esta tarea</summary>
+      <div class="details-body answer">
+        <p><b>a) ¿Por qué romper con un commit y no con kubectl?</b><br>Porque en GitOps la verdad es Git. Con <code>selfHeal</code>, Argo CD desharía un cambio a mano en segundos. Y un incidente real llega con un commit: es lo que el agente busca en el historial. Con kubectl no habría commit que encontrar y la demo mentiría.</p>
+        <p><b>b) ¿Por qué bajar el sondeo de Argo CD y qué implica en un clúster real?</b><br>Mi portátil no es accesible desde GitHub, así que no hay webhooks y Argo CD mira Git cada pocos minutos; con 30 s la demo no se para dos veces. En un clúster real con cientos de apps, mirar cada 30 s multiplica las peticiones a Git (límites de la API) y el trabajo del repo-server. Allí lo correcto es un webhook de GitHub a Argo CD.</p>
+      </div>
+    </details>
   </section>
+
+  <!-- ===================== TAREA 13 ===================== -->
   <section class="task" id="t13">
     <div class="task-head"><span class="num">13</span><h2>Ensayo de la demo</h2><span class="chip you">Contigo</span></div>
-    <p class="purpose pending">Necesita tu clave de Claude y tu token de GitHub. Lo hacemos juntos.</p>
+    <p class="purpose">Está todo preparado: el README, el guion (<code>docs/demo-fase-1.md</code>) y Argo CD a 30 s. Falta lo que solo puedes hacer tú.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b>Tus claves</b><span>La de Claude y el token de GitHub, en tu <code>.env</code>.</span></li>
+      <li class="box"><b>Ensayo ×3</b><span>Con el guion, apuntando tiempos y fallos.</span></li>
+      <li class="box"><b>En voz alta</b><span>La demo entera, como en la entrevista, sin ayuda.</span></li>
+      <li class="box"><b>Repo público</b><span>Solo con tu OK: <code>JavierMolero12/oncall-agent</code>.</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo crear el token de GitHub</summary>
+      <div class="details-body">
+        <ol>
+          <li>GitHub → <i>Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token</i>.</li>
+          <li><i>Repository access</i>: <i>Only select repositories</i> → <code>gitops-manifests</code>.</li>
+          <li><i>Permissions</i>: <i>Contents</i> y <i>Pull requests</i> en <i>Read and write</i>. <i>Metadata</i> se añade solo.</li>
+          <li>Caducidad corta (30 días). Cópialo en <code>.env</code> como <code>GITHUB_TOKEN</code>; no lo pegues en el chat.</li>
+        </ol>
+        <p><span class="label">Qué mirar en el primer ensayo</span><br>Será la primera vez que el agente habla con el modelo de verdad. Fíjate en que use Argo CD, los pods, los eventos y Git; que nombre <code>v9.9.9</code>, el commit culpable y el tag bueno de prod; y que salga el botón. Si algo falla, se ajusta el prompt o la descripción de una herramienta y se repite.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===================== TE TOCA A TI ===================== -->
+  <section class="task" id="tu-turno">
+    <div class="task-head"><h2>Te toca a ti</h2><span class="chip you">Pendiente</span></div>
+    <p class="purpose">Lo que no puedo hacer por ti, en este orden.</p>
+    <details open>
+      <summary>Tu lista</summary>
+      <div class="details-body">
+        <ol>
+          <li>Crear la clave de Claude y el token de GitHub y ponerlos en <code>.env</code> (apartado 13).</li>
+          <li>Primer ensayo conmigo, con el modelo real: es la primera vez que el agente razona de verdad.</li>
+          <li>Explicar con tus palabras cada apartado. Las preguntas: <b>6</b>, ¿para qué sirve el blob sha?; <b>7</b>, ¿por qué MCP?; <b>8</b>, el bucle y sus tres capas; <b>9</b>, ¿por qué esperar al commit del merge?; <b>10</b>, ¿qué es SSE y por qué el PR lo abre el backend?; <b>11</b>, ¿cómo llega un paso a la pantalla?; <b>12</b>, commit frente a kubectl y el sondeo de Argo CD.</li>
+          <li>Dos ensayos más, apuntando los tiempos en <code>docs/demo-fase-1.md</code>, y la demo entera en voz alta.</li>
+          <li>Leer el README y darme el OK para crear el repo público.</li>
+          <li>Fuera del proyecto: vaciar otra vez la papelera (10,2 GB) e instalar Ubuntu en WSL con <code>wsl --install -d Ubuntu</code>.</li>
+        </ol>
+      </div>
+    </details>
   </section>
 </main>
