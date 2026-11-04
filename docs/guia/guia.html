@@ -1,0 +1,342 @@
+<title>Guía oncall-agent</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,600..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: one runbook column; each task = header, a 3-4 box flow, then dropdowns. */
+  :root {
+    --bg: #f2f4f7;
+    --surface: #ffffff;
+    --ink: #14233b;
+    --muted: #57657c;
+    --line: #d4dae4;
+    --accent: #2753c9;
+    --accent-soft: #e5ecfb;
+    --code-bg: #edf0f5;
+    --ok: #1a7f37;
+    --ok-soft: #dcf5e3;
+    --warn: #8a5d00;
+    --warn-soft: #fff3c4;
+    --bad: #c2262c;
+    --bad-soft: #ffe5e3;
+    --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1420; --surface: #141e2e; --ink: #e2e8f2; --muted: #9ba8bd; --line: #2a374d;
+      --accent: #86a8ff; --accent-soft: #1b2a47; --code-bg: #0f1828;
+      --ok: #56c97a; --ok-soft: #12301e; --warn: #e5b94e; --warn-soft: #33290e; --bad: #ff7d75; --bad-soft: #3a1818;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1420; --surface: #141e2e; --ink: #e2e8f2; --muted: #9ba8bd; --line: #2a374d;
+    --accent: #86a8ff; --accent-soft: #1b2a47; --code-bg: #0f1828;
+    --ok: #56c97a; --ok-soft: #12301e; --warn: #e5b94e; --warn-soft: #33290e; --bad: #ff7d75; --bad-soft: #3a1818;
+    color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--font-body); }
+  .wrap {
+    max-width: 760px; margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px 80px;
+    display: grid; gap: 40px;
+  }
+  h1, h2, h3 { font-family: var(--font-display); font-stretch: 85%; text-wrap: balance; margin: 0; line-height: 1.15; }
+  h1 { font-size: clamp(2rem, 6vw, 2.8rem); font-weight: 800; letter-spacing: -0.01em; }
+  h2 { font-size: 1.45rem; font-weight: 700; }
+  p { margin: 0; }
+  code, pre, kbd { font-family: var(--font-mono); font-size: 0.86em; }
+  :not(pre) > code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; overflow-wrap: anywhere; }
+  a { color: var(--accent); }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+  /* Hero */
+  .hero { display: grid; gap: 14px; }
+  .eyebrow { font: 600 0.75rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+  .lede { color: var(--muted); max-width: 62ch; }
+  .progress { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; margin-top: 6px; }
+  .progress span { height: 8px; border-radius: 2px; background: var(--line); }
+  .progress span.done { background: var(--ok); }
+  .progress span.you { background: var(--warn); }
+  .progress-label { font: 500 0.82rem/1.4 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* Table of contents */
+  .toc { display: flex; flex-wrap: wrap; gap: 6px 8px; }
+  .toc a { text-decoration: none; font: 500 0.82rem/1 var(--font-mono); color: var(--ink); border: 1px solid var(--line); background: var(--surface); padding: 7px 9px; border-radius: 6px; }
+  .toc a:hover { border-color: var(--accent); }
+
+  /* Task sections */
+  .task { display: grid; gap: 16px; scroll-margin-top: 16px; }
+  .task-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .num { font: 700 0.9rem/1 var(--font-mono); color: var(--accent); border: 1.5px solid var(--accent); border-radius: 6px; padding: 5px 7px; font-variant-numeric: tabular-nums; }
+  .chip { font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; padding: 5px 8px; border-radius: 999px; }
+  .chip.done { background: var(--ok-soft); color: var(--ok); }
+  .chip.todo { background: var(--line); color: var(--muted); }
+  .chip.you { background: var(--warn-soft); color: var(--warn); }
+  .purpose { color: var(--muted); max-width: 65ch; }
+
+  /* The 3-4 box flow */
+  .flow { list-style: none; margin: 0; padding: 0; counter-reset: step; display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 26px; }
+  .box { counter-increment: step; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 12px 14px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+  .box::before { content: counter(step); font: 600 0.72rem/1 var(--font-mono); color: var(--accent); }
+  .box:not(:last-child)::after { content: "→"; position: absolute; right: -21px; top: 50%; transform: translateY(-50%); color: var(--accent); font: 700 1.05rem/1 var(--font-mono); }
+  .box b { font-family: var(--font-display); font-stretch: 90%; font-size: 1.02rem; line-height: 1.25; }
+  .box span { font-size: 0.88rem; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+  @media (max-width: 640px) {
+    .flow { grid-template-columns: 1fr; gap: 24px; }
+    .box:not(:last-child)::after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -21px; transform: translateX(-50%); }
+  }
+
+  /* Dropdowns */
+  details { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+  details.quiz { background: var(--accent-soft); border-color: transparent; }
+  summary { cursor: pointer; list-style: none; padding: 12px 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▸"; color: var(--accent); font-family: var(--font-mono); transition: transform 0.15s; }
+  details[open] > summary::before { transform: rotate(90deg); }
+  @media (prefers-reduced-motion: reduce) { summary::before { transition: none; } }
+  .details-body { padding: 0 14px 16px; display: grid; gap: 12px; min-width: 0; }
+  .details-body ol, .details-body ul { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+  pre { margin: 0; background: var(--code-bg); border-radius: 6px; padding: 10px 12px; overflow-x: auto; line-height: 1.5; font-size: 0.8rem; }
+  .label { font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .ok { color: var(--ok); font-weight: 600; } .warn { color: var(--warn); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; }
+  .pending { color: var(--muted); font-style: italic; }
+  .answer { border-left: 3px solid var(--accent); padding-left: 12px; }
+</style>
+
+<main class="wrap">
+  <header class="hero">
+    <p class="eyebrow">AstroKube · AI &amp; Platform Engineer · fase 1</p>
+    <h1>Guía de oncall-agent</h1>
+    <p class="lede">Un agente de guardia que mira tu clúster, encuentra por qué falla <code>sample-api</code> en dev y te propone el arreglo como Pull Request. Cada apartado tiene un esquema de 3 o 4 pasos y un desplegable con cómo funciona por dentro.</p>
+    <div class="progress" aria-hidden="true">
+      <span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span>
+      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <p class="progress-label">5 de 13 tareas hechas · 44 tests en verde · se actualiza mientras construyo</p>
+  </header>
+
+  <nav class="toc" aria-label="Apartados">
+    <a href="#mapa">Mapa</a><a href="#t1">1 Config</a><a href="#t2">2 Estado</a><a href="#t3">3 Clúster</a><a href="#t4">4 Eventos</a><a href="#t5">5 Git</a><a href="#t6">6 PR</a><a href="#t7">7 MCP</a><a href="#t8">8 Agente</a><a href="#t9">9 Recuperación</a><a href="#t10">10 Web</a><a href="#t11">11 Interfaz</a><a href="#t12">12 Demo</a><a href="#t13">13 Ensayo</a>
+  </nav>
+
+  <!-- ===================== MAPA ===================== -->
+  <section class="task" id="mapa">
+    <div class="task-head"><h2>El mapa completo</h2></div>
+    <p class="purpose">Antes de los detalles: estas son las cuatro piezas y el orden en que se hablan.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b>Tú preguntas</b><span>En el chat, en español: «¿Qué le pasa a sample-api en dev?»</span></li>
+      <li class="box"><b>El agente razona</b><span>Claude decide qué mirar. El bucle lo escribimos nosotros, sin frameworks.</span></li>
+      <li class="box"><b>Herramientas MCP</b><span>Leen el clúster y Git. Solo una escribe, y solo abre un PR.</span></li>
+      <li class="box"><b>Clúster y GitHub</b><span>k3d con Argo CD, y el repo <code>gitops-manifests</code>.</span></li>
+    </ol>
+    <details>
+      <summary>Ver el recorrido de una pregunta</summary>
+      <div class="details-body">
+        <ol>
+          <li>Escribes la pregunta. El backend (FastAPI) se la manda a Claude junto con la lista de herramientas de <b>solo lectura</b>.</li>
+          <li>Claude contesta «quiero llamar a <code>list_pods(dev)</code>». El backend la ejecuta a través del servidor MCP y le devuelve el resultado.</li>
+          <li>Se repite: Argo CD, eventos del pod, historial de Git… Cada llamada aparece en «Pasos del agente».</li>
+          <li>Claude responde con la causa y la evidencia. Si hay arreglo, llama a <code>propose_fix</code>, que <b>no cambia nada</b>: solo prepara el diff.</li>
+          <li>Tú pulsas «Abrir Pull Request con el arreglo». El PR lo abre el backend, no el modelo.</li>
+          <li>Tú lo revisas y lo fusionas en GitHub. Argo CD ve el commit nuevo y lo aplica.</li>
+          <li>El vigilante confirma: «Resuelto. dev vuelve a estar sano».</li>
+        </ol>
+        <p><span class="label">La idea clave</span><br>Hay dos puertas humanas: pulsar el botón y fusionar el PR. El agente nunca toca el clúster directamente; todo cambio pasa por Git, que es justo lo que pide GitOps.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===================== TAREA 1 ===================== -->
+  <section class="task" id="t1">
+    <div class="task-head"><span class="num">1</span><h2>Esqueleto y configuración</h2><span class="chip done">Hecho</span></div>
+    <p class="purpose">La base del proyecto: dónde vive Python, qué librerías usa y de dónde saca las claves.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b><code>.venv</code></b><span>Un Python solo para este proyecto. Si lo borras, se recrea.</span></li>
+      <li class="box"><b><code>pyproject.toml</code></b><span>La ficha: nombre, Python 3.13 y las librerías.</span></li>
+      <li class="box"><b><code>.env</code></b><span>Las claves. Nunca se sube a Git; <code>.env.example</code> sí.</span></li>
+      <li class="box"><b><code>config.py</code></b><span>Lee el <code>.env</code> y pone valores por defecto.</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo funciona</summary>
+      <div class="details-body">
+        <p><code>load_settings()</code> lee cada variable y, si falta, usa la de por defecto. Una clave vacía cuenta como que falta: así, si copias <code>.env.example</code> sin rellenarlo, el chat te avisa en vez de fallar raro.</p>
+        <pre><code>def _secret(value):
+    """An empty or blank secret is the same as a missing one."""
+    if value is None or not value.strip():
+        return None
+    return value.strip()</code></pre>
+        <p><span class="label">La prueba de <code>pip install -e</code></span><br>Con <code>-e</code> pip no copia el código: deja un fichero <code>.pth</code> que apunta a <code>src/</code>. Por eso los cambios se ven sin reinstalar. Solo reinstalas si añades una librería.</p>
+        <pre><code>&gt; python -c "import oncall_agent.config as c; print(c.__file__)"
+C:\...\oncall-agent\src\oncall_agent\config.py      ← carga desde src/
+.venv\Lib\site-packages\__editable__.oncall_agent-0.1.0.pth
+C:\...\oncall-agent\src                             ← lo único que dejó pip</code></pre>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Pregunta de entrevista: ¿cómo gestionas los secretos?</summary>
+      <div class="details-body answer">
+        <p>En local, en un <code>.env</code> fuera de Git, con una plantilla <code>.env.example</code> sin valores. En el clúster, en un <code>Secret</code> de Kubernetes, nunca en claro en el repo de GitOps: ahí se usa Sealed Secrets o External Secrets, que guardan en Git algo cifrado o una referencia a un gestor de secretos.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===================== TAREA 2 ===================== -->
+  <section class="task" id="t2">
+    <div class="task-head"><span class="num">2</span><h2>Estado de cada entorno</h2><span class="chip done">Hecho</span></div>
+    <p class="purpose">Lo que pinta el panel «Estado del clúster · en vivo»: un estado por entorno, calculado mirando los pods.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b>Pods del namespace</b><span>Se ignoran los que se están borrando y los terminados.</span></li>
+      <li class="box"><b>¿Por qué no arranca?</b><span><code>ImagePullBackOff</code>, <code>CrashLoopBackOff</code>, <code>OOMKilled</code>…</span></li>
+      <li class="box"><b>Reglas</b><span>Ninguno listo → Con fallos. Uno listo y otro roto → Atascada.</span></li>
+      <li class="box"><b>Panel</b><span><span class="ok">Sano</span> · <span class="warn">Atascada</span> · <span class="bad">Con fallos</span> · Sin conexión</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo funciona</summary>
+      <div class="details-body">
+        <p><span class="label">Por qué sigue habiendo un pod listo</span><br>Tu Deployment de dev tiene esta estrategia (leída de tu clúster):</p>
+        <pre><code>réplicas=1  maxSurge=1  maxUnavailable=0</code></pre>
+        <p>Kubernetes arranca primero el pod nuevo y <b>no borra el viejo hasta que el nuevo está listo</b>. Si la imagen no existe, el nuevo nunca llega a estar listo y el viejo sigue atendiendo. En el panel saldrá <span class="warn">Actualización atascada · 1 de 2 pods listos</span>, y la app no se cae.</p>
+        <p><span class="label">ImagePullBackOff</span><br>El nodo (el kubelet) intenta descargar la imagen de GHCR. Si falla, primero sale <code>ErrImagePull</code>; después reintenta esperando cada vez más (10 s, 20 s, 40 s… hasta 5 min). Mientras espera, el pod está en <code>ImagePullBackOff</code>.</p>
+        <p><span class="label">El fallo que encontramos al probarlo</span><br>La primera prueba dijo «Sin conexión» con el clúster encendido. El error real: k3d escribe <code>https://0.0.0.0:59166</code> en el kubeconfig; <code>kubectl</code> lo acepta, pero Windows no deja a Python conectarse a <code>0.0.0.0</code> (<code>WinError 10049</code>). Lo arregla <code>reachable_host()</code>, que lo cambia por <code>127.0.0.1</code>. Buena historia para la entrevista: miré el error de fondo antes de tocar nada.</p>
+        <pre><code>sample-api-dev   Sano   1 de 1 pods listos
+sample-api-prod  Sano   3 de 3 pods listos
+monitoring       Sano   2 de 2 pods listos</code></pre>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Las dos preguntas que quedaron pendientes</summary>
+      <div class="details-body answer">
+        <p><b>a) Con <code>maxUnavailable: 1</code>, ¿qué veríamos al romper la imagen?</b><br>Kubernetes podría borrar el pod viejo antes de que el nuevo esté listo. Quedarían 0 de 1 listos: <span class="bad">Con fallos</span>, y dev caído. Por eso <code>maxUnavailable: 0</code> es la opción segura.</p>
+        <p><b>b) ¿Dónde ocurre el <code>ImagePullBackOff</code> y qué dice Argo CD?</b><br>En el nodo, cuando el kubelet intenta descargar la imagen. Argo CD dirá <b>Sincronizado</b>, porque el clúster tiene exactamente lo que dice Git. Lo que cambia es la <b>salud</b>: «En progreso» y, a los 10 minutos (<code>progressDeadlineSeconds</code>), «Degradado». Sincronizado no significa que funcione: por eso el panel mira los pods.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===================== TAREA 3 ===================== -->
+  <section class="task" id="t3">
+    <div class="task-head"><span class="num">3</span><h2>Leer Argo CD, el Deployment y los pods</h2><span class="chip done">Hecho</span></div>
+    <p class="purpose">Las primeras herramientas del agente. Solo leen, y cada una devuelve una frase corta en español para el panel de pasos.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b>Consultar Argo CD</b><span>Sync y salud de la app, y el commit que tiene aplicado.</span></li>
+      <li class="box"><b>Ver despliegue</b><span>La imagen que pide el Deployment y si la actualización terminó.</span></li>
+      <li class="box"><b>Ver pods</b><span>Cada pod: listo o no, reinicios, imagen y motivo del fallo.</span></li>
+      <li class="box"><b>Resumen</b><span>«Sincronizado · Degradado», «1 de 2 pods listos · … en ImagePullBackOff».</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo funciona</summary>
+      <div class="details-body">
+        <p>Argo CD guarda cada app como un recurso de Kubernetes (un CRD llamado <code>Application</code>). Por eso no hace falta la API de Argo CD: se lee con el mismo cliente de Kubernetes.</p>
+        <pre><code>clients.custom.get_namespaced_custom_object(
+    "argoproj.io", "v1alpha1", "argocd", "applications", "sample-api-dev")</code></pre>
+        <p><span class="label">Salida real de tu clúster</span></p>
+        <pre><code>argocd : Sincronizado · Sano | rev a7f169c | path apps/overlays/dev
+deploy : Imagen sample-api:ed01aa4 · 1/1 listos · actualización completada
+prod   : Imagen sample-api:ed01aa4 · 3/3 listos · actualización completada</code></pre>
+        <p>Con dev roto veremos el Deployment pidiendo <code>sample-api:v9.9.9</code>, «actualización sin completar», y dos pods: el viejo listo con <code>ed01aa4</code> y el nuevo en <code>ImagePullBackOff</code>.</p>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Pregunta de entrevista: ¿sync o health?</summary>
+      <div class="details-body answer">
+        <p><b>Sync</b> compara Git con el clúster: ¿está aplicado lo que dice el repo? <b>Health</b> mira si lo aplicado funciona: ¿los pods están listos? Puedes estar <i>Sincronizado y Degradado</i> a la vez: es exactamente el fallo 1.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===================== TAREA 4 ===================== -->
+  <section class="task" id="t4">
+    <div class="task-head"><span class="num">4</span><h2>Eventos del pod</h2><span class="chip done">Hecho</span><span class="chip you">Ejercicio</span></div>
+    <p class="purpose">Donde Kubernetes explica con palabras por qué un pod no arranca. Es la pista que nombra la imagen que no existe.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b>Nombre del pod</b><span>Se valida: solo letras, números, «-» y «.».</span></li>
+      <li class="box"><b>Pedir sus eventos</b><span>Filtro <code>involvedObject.name=&lt;pod&gt;</code>.</span></li>
+      <li class="box"><b>Ordenar</b><span>Del más reciente al más antiguo, como mucho 10.</span></li>
+      <li class="box"><b>Resumen</b><span>«3 eventos · último: Failed: Failed to pull image…»</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo funciona</summary>
+      <div class="details-body">
+        <p>Esto es lo que dirá el evento cuando rompamos dev (lo hemos comprobado en GHCR: <code>ed01aa4…</code> responde 200 y <code>v9.9.9</code> responde 404):</p>
+        <pre><code>Warning  Failed  Failed to pull image "ghcr.io/javiermolero12/sample-api:v9.9.9":
+                 ... not found
+Warning  Failed  Error: ImagePullBackOff</code></pre>
+        <p>¿Por qué validar el nombre? Va dentro de un filtro de texto; una coma añadiría una segunda condición. Es barato y evita sorpresas.</p>
+        <p><span class="label">Tu ejercicio</span><br>En el plan esta herramienta la escribías tú. Te la he dejado hecha para que el agente funcione entero, pero puedes practicar: borra el cuerpo de <code>get_pod_events</code> en <code>src/oncall_agent/tools/cluster.py</code> y vuelve a escribirlo hasta que pasen sus 6 tests.</p>
+        <pre><code>.venv\Scripts\python -m pytest tests/test_tools_events.py -v</code></pre>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===================== TAREA 5 ===================== -->
+  <section class="task" id="t5">
+    <div class="task-head"><span class="num">5</span><h2>GitHub: historial y manifiestos</h2><span class="chip done">Hecho</span></div>
+    <p class="purpose">En GitOps todo cambio entra por Git. El último commit en <code>apps/overlays/dev</code> suele ser el sospechoso.</p>
+    <ol class="flow" style="--n:4">
+      <li class="box"><b>Revisar historial</b><span>Los últimos commits que tocaron una carpeta.</span></li>
+      <li class="box"><b>Ver cambios de un commit</b><span>El diff: qué línea cambió y a qué.</span></li>
+      <li class="box"><b>Leer manifiesto</b><span>El fichero tal como está ahora en <code>main</code>.</span></li>
+      <li class="box"><b>API de GitHub</b><span>Para leer no hace falta token: el repo es público.</span></li>
+    </ol>
+    <details>
+      <summary>Ver cómo funciona</summary>
+      <div class="details-body">
+        <p><span class="label">Salida real de tu repo</span></p>
+        <pre><code>Último cambio: cfc84f4 «chore(dev): deploy sample-api ed01aa4»
+   cfc84f4 chore(dev): deploy sample-api ed01aa4
+   aed1bb5 chore(dev): deploy sample-api 47b8d0d
+Cambia apps/overlays/dev/kustomization.yaml
+   -    newTag: "47b8d0da927a3406ffc4f6d9416abb6f1072c06f"
+   +    newTag: "ed01aa462622ba11c87c77902dd1f4f63819a249"</code></pre>
+        <p><span class="label">El «blob sha»</span><br>Es el identificador que Git da al contenido de un fichero (un hash de sus bytes). Para modificar un fichero, GitHub te pide el blob sha que tú leíste: si alguien lo cambió entretanto, ya no coincide y GitHub rechaza la escritura en vez de pisar su cambio.</p>
+        <p>Los errores llegan en español y con pista: un 401 dice «revisa GITHUB_TOKEN»; sin red, «No puedo conectar con GitHub».</p>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Pregunta de entrevista: ¿por qué empezar por Git?</summary>
+      <div class="details-body answer">
+        <p>Porque en GitOps el clúster es una copia de Git. Si dev se rompió justo después de un commit en su carpeta, ese commit es la primera hipótesis, y el diff dice exactamente qué cambió. Luego se confirma con la evidencia del clúster: eventos y estado de los pods.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===================== PENDIENTES ===================== -->
+  <section class="task" id="t6">
+    <div class="task-head"><span class="num">6</span><h2>Proponer el arreglo y abrir el PR</h2><span class="chip todo">En construcción</span></div>
+    <p class="purpose pending">La única escritura del agente, limitada a <code>apps/overlays/dev/</code>.</p>
+  </section>
+  <section class="task" id="t7">
+    <div class="task-head"><span class="num">7</span><h2>Servidor MCP</h2><span class="chip todo">En construcción</span></div>
+    <p class="purpose pending">Las herramientas detrás de un protocolo estándar.</p>
+  </section>
+  <section class="task" id="t8">
+    <div class="task-head"><span class="num">8</span><h2>El bucle del agente</h2><span class="chip todo">En construcción</span></div>
+    <p class="purpose pending">Modelo → herramienta → resultado → modelo, con límite de pasos.</p>
+  </section>
+  <section class="task" id="t9">
+    <div class="task-head"><span class="num">9</span><h2>Vigilante de recuperación</h2><span class="chip todo">En construcción</span></div>
+    <p class="purpose pending">Después del PR: ¿se fusionó, lo aplicó Argo CD, vuelve a estar sano?</p>
+  </section>
+  <section class="task" id="t10">
+    <div class="task-head"><span class="num">10</span><h2>Backend web</h2><span class="chip todo">En construcción</span></div>
+    <p class="purpose pending">FastAPI con el chat en directo (SSE).</p>
+  </section>
+  <section class="task" id="t11">
+    <div class="task-head"><span class="num">11</span><h2>Interfaz</h2><span class="chip todo">En construcción</span></div>
+    <p class="purpose pending">La pantalla de la maqueta: chat, estado en vivo y pasos del agente.</p>
+  </section>
+  <section class="task" id="t12">
+    <div class="task-head"><span class="num">12</span><h2>Scripts de la demo</h2><span class="chip todo">En construcción</span></div>
+    <p class="purpose pending">Romper dev con un commit, restaurarlo, y acelerar a Argo CD.</p>
+  </section>
+  <section class="task" id="t13">
+    <div class="task-head"><span class="num">13</span><h2>Ensayo de la demo</h2><span class="chip you">Contigo</span></div>
+    <p class="purpose pending">Necesita tu clave de Claude y tu token de GitHub. Lo hacemos juntos.</p>
+  </section>
+</main>
