@@ -1,6 +1,7 @@
 """Read-only cluster tools: Argo CD Application, Deployment and pods."""
 
 import re
+from datetime import UTC, datetime
 
 from oncall_agent.config import ENVIRONMENTS, EnvironmentSpec, Settings
 from oncall_agent.kube import KubeClients, call_kube
@@ -19,6 +20,10 @@ ARGO_STATES_ES = {
 }
 
 _GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
+# Kubernetes object names (RFC 1123): lowercase letters, digits, "-" and ".".
+_POD_NAME = re.compile(r"^[a-z0-9]([-a-z0-9.]{0,251}[a-z0-9])?$")
+MAX_EVENTS = 10
+_LONG_AGO = datetime.min.replace(tzinfo=UTC)
 
 
 def environment_spec(environment: str) -> EnvironmentSpec:
@@ -123,3 +128,50 @@ def list_pods(environment: str, clients: KubeClients) -> dict:
         if row["failure_reason"] and not row["ready"] and not row["terminating"]:
             summary += f" · {row['name']} en {row['failure_reason']}"
     return {"environment": environment, "pods": rows, "summary": summary}
+
+
+def _cut(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _event_time(event) -> datetime:
+    # Core events fill last_timestamp; newer controllers may only fill event_time.
+    return (
+        event.last_timestamp
+        or event.event_time
+        or event.first_timestamp
+        or event.metadata.creation_timestamp
+        or _LONG_AGO
+    )
+
+
+def get_pod_events(environment: str, pod_name: str, clients: KubeClients) -> dict:
+    """The pod's recent events, newest first: where Kubernetes explains why a pod won't start."""
+    spec = environment_spec(environment)
+    if not _POD_NAME.match(pod_name):
+        raise ValueError(f"«{pod_name}» no es un nombre de pod. Usa un nombre de list_pods.")
+    events = call_kube(
+        clients.core.list_namespaced_event,
+        spec.namespace,
+        field_selector=f"involvedObject.name={pod_name}",
+    ).items
+    events = sorted(events, key=_event_time, reverse=True)[:MAX_EVENTS]
+    rows = [
+        {
+            "type": e.type,
+            "reason": e.reason,
+            "message": e.message,
+            "count": e.count or 1,
+            "last_seen": _event_time(e).isoformat() if _event_time(e) is not _LONG_AGO else None,
+        }
+        for e in events
+    ]
+    if not rows:
+        summary = "Sin eventos recientes"
+    else:
+        noun = "evento" if len(rows) == 1 else "eventos"
+        last = rows[0]
+        summary = (
+            f"{len(rows)} {noun} · último: {last['reason']}: {_cut(last['message'] or '', 80)}"
+        )
+    return {"environment": environment, "pod": pod_name, "events": rows, "summary": summary}
