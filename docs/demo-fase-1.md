@@ -79,5 +79,5 @@ la herramienta, se añade un test si aplica y se repite.
 | Ensayo | Fecha | Romper → *Atascada* | Pregunta → propuesta | Merge → *Sano* | Fallos y notas |
 |---|---|---|---|---|---|
 | 1 | 2026-11-10 | 64 s | < 2 min | 18 s | Bien a la primera (PR #2): 7 herramientas de lectura, citó el evento `Failed to pull image` y el commit `42da8d0` y propuso `ed01aa4`, la imagen de prod. Antes de empezar, Docker estaba parado y Windows había reservado el puerto del clúster (ver la tabla de arriba) |
-| 2 | pendiente | | | | |
+| 2 | 2026-11-10 | 21 s | sin cronometrar (menos de 3 min, contando el tiempo de hablar) | 24 s | Sin fallos (PR #3). Javier rompió dev desde su terminal. Con dos commits `v9.9.9` en el historial, el agente culpó al último (`5b4315f`), que era el correcto |
 | 3 | pendiente | | | | |
