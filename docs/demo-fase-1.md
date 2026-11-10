@@ -42,7 +42,8 @@ Guion para enseñar el agente de principio a fin, en voz alta y como en la entre
 
 ### 3. Preguntar al agente (1-2 min)
 
-- **Haces:** escribir «¿Qué le pasa a sample-api en dev?».
+- **Haces:** esperar a que el panel diga *Actualización atascada*, señalarlo y escribir
+  «¿Qué le pasa a sample-api en dev?». El entrevistador tiene que ver el fallo antes que la solución.
 - **Ves:** los pasos en vivo (Argo CD, despliegue, pods, eventos, historial de Git, manifiesto) y
   una respuesta que nombra `v9.9.9`, el commit culpable y el tag bueno (el del pod viejo, que es
   el mismo que corre en prod). Debajo, el diff y el botón *Abrir Pull Request con el arreglo*.
@@ -60,11 +61,14 @@ Guion para enseñar el agente de principio a fin, en voz alta y como en la entre
 
 ### 5. Fusionar y ver la recuperación (1-2 min)
 
-- **Haces:** en GitHub, revisar el diff y fusionar.
+- **Haces:** en GitHub, leer el diff en voz alta («una sola línea, solo en dev, de `v9.9.9` a la
+  imagen de prod») y fusionar.
 - **Ves:** en el chat, «PR #… fusionado. Esperando a que Argo CD lo aplique…», después «Argo CD
   ha aplicado el commit …» y por último «Resuelto…», en verde. El panel vuelve a *Sano*.
 - **Dices:** «Segundo control humano: el merge. Argo CD aplica `main` y el agente lo comprueba en
   tres pasos: el PR está fusionado, Argo CD ha sincronizado justo ese commit y dev está sano.»
+- **Si Argo CD tarda:** «En local uso sondeo cada 30 segundos porque GitHub no puede avisar a mi
+  portátil; en un clúster de verdad pondría un webhook y sería inmediato.»
 
 ## Si algo se tuerce
 
@@ -88,3 +92,4 @@ la herramienta, se añade un test si aplica y se repite.
 | 1 | 2026-11-10 | 64 s | < 2 min | 18 s | Bien a la primera (PR #2): 7 herramientas de lectura, citó el evento `Failed to pull image` y el commit `42da8d0` y propuso `ed01aa4`, la imagen de prod. Antes de empezar, Docker estaba parado y Windows había reservado el puerto del clúster (ver la tabla de arriba) |
 | 2 | 2026-11-10 | 21 s | sin cronometrar (menos de 3 min, contando el tiempo de hablar) | 24 s | Sin fallos (PR #3). Javier rompió dev desde su terminal. Con dos commits `v9.9.9` en el historial, el agente culpó al último (`5b4315f`), que era el correcto |
 | 3 | 2026-11-10 | 39 s | unos 60 s | 22 s | Bien (PR #4), con 9 herramientas: citó los eventos y el commit `03ba7da`, propuso `ed01aa4` y avisó de que `v9.9.9` ya había pasado antes y de que no puede ver la CI. La primera pregunta recibió «la propuesta es la misma de antes», sin botón, porque el servidor recordaba el ensayo 2: desde ahora se pulsa **Nueva conversación** antes de empezar (ver la lista de arriba). De este ensayo salen las capturas del README |
+| 4 | 2026-11-10 | 21 s | sin cronometrar | 37 s | Ensayo en voz alta de Javier, solo y sin ayuda (PR #5). El agente propuso `ed01aa4`, la imagen de prod, y solo tocó el overlay de dev. Del fallo al botón del PR pasaron 30 s, y el merge llegó 31 s después de abrirse el PR: desde ahora se espera a *Actualización atascada* antes de preguntar y se lee el diff en voz alta antes de fusionar (ver el guion). Llegar a *Sano* tardó más que en los ensayos porque Argo CD mira Git cada 30 s |
