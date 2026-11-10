@@ -1,0 +1,20 @@
+# The Argo CD web UI at http://argocd.localhost:8080 (k3d maps the laptop's port 8080 to
+# Traefik on port 80). Browsers resolve *.localhost to the laptop itself, so no hosts file.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: argocd.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  name: http

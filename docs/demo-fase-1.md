@@ -14,7 +14,12 @@ Guion para enseñar el agente de principio a fin, en voz alta y como en la entre
 - [ ] `.env` tiene `ANTHROPIC_API_KEY` y `GITHUB_TOKEN`.
 - [ ] El servidor está arrancado (`.venv\Scripts\python -m oncall_agent.web`) y
       <http://127.0.0.1:8765> abierto en el navegador.
+- [ ] Pulsado **Nueva conversación**. El servidor guarda la conversación aunque recargues la
+      página, y si recuerda un ensayo anterior contesta «la propuesta es la misma de antes», sin
+      diff ni botón.
 - [ ] GitHub abierto en otra pestaña, en los Pull Requests de `gitops-manifests`.
+- [ ] (Opcional) Argo CD abierto en <http://argocd.localhost:8080>, para enseñar la sincronización
+      en directo.
 - [ ] **Nadie hace push a `sample-api`** durante la demo: su CI reescribe `newTag` en dev.
 
 ## El guion
@@ -68,6 +73,8 @@ Guion para enseñar el agente de principio a fin, en voz alta y como en la entre
 | El agente no llega a una conclusión o se equivoca | Repetir la pregunta; si sigue, `demo_faults.py restore` y explicar qué haría para mejorarlo |
 | «No puedo conectar con el clúster» | Docker o el clúster están parados: arrancar Docker Desktop, `k3d cluster start gitops-demo` y esperar a que vuelva el panel |
 | `k3d cluster start` falla con «ports are not available … permisos de acceso» | Windows ha reservado el puerto de la API del clúster (se ve con `netsh interface ipv4 show excludedportrange protocol=tcp`). En PowerShell como administrador: `net stop winnat`, `k3d cluster start gitops-demo` y `net start winnat` |
+| El agente contesta «la propuesta es la misma de antes» y no sale el botón | Recuerda una conversación anterior: pulsar **Nueva conversación** y repetir la pregunta |
+| La web de Argo CD no carga | Abrir <http://argocd.localhost:8080>, con `http`. Un `port-forward` al puerto 443 se corta porque Argo CD va sin TLS |
 | Error de GitHub al abrir el PR | Revisar `GITHUB_TOKEN` (permisos y caducidad) |
 | Hay que dejarlo todo como estaba | `.venv\Scripts\python scripts\demo_faults.py restore` |
 
@@ -80,4 +87,4 @@ la herramienta, se añade un test si aplica y se repite.
 |---|---|---|---|---|---|
 | 1 | 2026-11-10 | 64 s | < 2 min | 18 s | Bien a la primera (PR #2): 7 herramientas de lectura, citó el evento `Failed to pull image` y el commit `42da8d0` y propuso `ed01aa4`, la imagen de prod. Antes de empezar, Docker estaba parado y Windows había reservado el puerto del clúster (ver la tabla de arriba) |
 | 2 | 2026-11-10 | 21 s | sin cronometrar (menos de 3 min, contando el tiempo de hablar) | 24 s | Sin fallos (PR #3). Javier rompió dev desde su terminal. Con dos commits `v9.9.9` en el historial, el agente culpó al último (`5b4315f`), que era el correcto |
-| 3 | pendiente | | | | |
+| 3 | 2026-11-10 | 39 s | unos 60 s | 22 s | Bien (PR #4), con 9 herramientas: citó los eventos y el commit `03ba7da`, propuso `ed01aa4` y avisó de que `v9.9.9` ya había pasado antes y de que no puede ver la CI. La primera pregunta recibió «la propuesta es la misma de antes», sin botón, porque el servidor recordaba el ensayo 2: desde ahora se pulsa **Nueva conversación** antes de empezar (ver la lista de arriba). De este ensayo salen las capturas del README |

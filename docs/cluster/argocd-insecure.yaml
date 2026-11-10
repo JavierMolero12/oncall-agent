@@ -1,0 +1,5 @@
+# Patch for the argocd-cmd-params-cm ConfigMap: argocd-server serves plain HTTP.
+# Traefik (the Ingress controller that k3d ships) passes it the traffic for argocd.localhost.
+# Fine for a laptop lab; on a real cluster the Ingress would terminate TLS with a certificate.
+data:
+  server.insecure: "true"
