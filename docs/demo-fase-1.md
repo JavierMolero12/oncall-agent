@@ -5,7 +5,8 @@ Guion para enseñar el agente de principio a fin, en voz alta y como en la entre
 
 ## Antes de empezar (5 minutos antes)
 
-- [ ] Docker Desktop arrancado y el clúster `gitops-demo` en marcha.
+- [ ] Docker Desktop arrancado y el clúster `gitops-demo` en marcha. Si está parado:
+      `k3d cluster start gitops-demo` (si falla, mira la tabla del final).
 - [ ] Las cuatro apps de Argo CD en *Synced / Healthy*:
       `kubectl --context k3d-gitops-demo -n argocd get applications`
 - [ ] Argo CD mira Git cada 30 s: `kubectl --context k3d-gitops-demo -n argocd get cm argocd-cm -o jsonpath="{.data.timeout\.reconciliation}"` devuelve `30s`.
@@ -28,7 +29,7 @@ Guion para enseñar el agente de principio a fin, en voz alta y como en la entre
 ### 2. Romper dev con un mal commit (1 min)
 
 - **Haces:** `.venv\Scripts\python scripts\demo_faults.py break image`
-- **Ves:** «Hecho: commit … en main». En menos de un minuto dev pasa a *Actualización atascada*.
+- **Ves:** «Hecho: commit … en main». En un minuto, más o menos, dev pasa a *Actualización atascada*.
 - **Dices:** «Simulo un error humano: alguien sube a `main` un tag de imagen que no existe. Lo
   rompo con un commit y no con kubectl porque en GitOps la verdad es Git: si lo cambiara a mano,
   Argo CD lo desharía. El pod nuevo no puede descargar la imagen, pero el viejo sigue sirviendo,
@@ -38,8 +39,8 @@ Guion para enseñar el agente de principio a fin, en voz alta y como en la entre
 
 - **Haces:** escribir «¿Qué le pasa a sample-api en dev?».
 - **Ves:** los pasos en vivo (Argo CD, despliegue, pods, eventos, historial de Git, manifiesto) y
-  una respuesta que nombra `v9.9.9`, el commit culpable y el tag bueno que corre en prod. Debajo,
-  el diff y el botón *Abrir Pull Request con el arreglo*.
+  una respuesta que nombra `v9.9.9`, el commit culpable y el tag bueno (el del pod viejo, que es
+  el mismo que corre en prod). Debajo, el diff y el botón *Abrir Pull Request con el arreglo*.
 - **Dices:** «Cada paso es una herramienta del servidor MCP. El modelo decide cuál usar, pero solo
   tiene herramientas de lectura. Fíjate en que cita la evidencia: el evento del pod y la línea
   del commit. El arreglo de momento es solo una propuesta: un diff.»
@@ -65,7 +66,8 @@ Guion para enseñar el agente de principio a fin, en voz alta y como en la entre
 | Qué pasa | Qué haces |
 |---|---|
 | El agente no llega a una conclusión o se equivoca | Repetir la pregunta; si sigue, `demo_faults.py restore` y explicar qué haría para mejorarlo |
-| «No puedo conectar con el clúster» | Docker está parado: arrancarlo y esperar a que vuelva el panel |
+| «No puedo conectar con el clúster» | Docker o el clúster están parados: arrancar Docker Desktop, `k3d cluster start gitops-demo` y esperar a que vuelva el panel |
+| `k3d cluster start` falla con «ports are not available … permisos de acceso» | Windows ha reservado el puerto de la API del clúster (se ve con `netsh interface ipv4 show excludedportrange protocol=tcp`). En PowerShell como administrador: `net stop winnat`, `k3d cluster start gitops-demo` y `net start winnat` |
 | Error de GitHub al abrir el PR | Revisar `GITHUB_TOKEN` (permisos y caducidad) |
 | Hay que dejarlo todo como estaba | `.venv\Scripts\python scripts\demo_faults.py restore` |
 
@@ -76,6 +78,6 @@ la herramienta, se añade un test si aplica y se repite.
 
 | Ensayo | Fecha | Romper → *Atascada* | Pregunta → propuesta | Merge → *Sano* | Fallos y notas |
 |---|---|---|---|---|---|
-| 1 | pendiente | | | | |
+| 1 | 2026-11-10 | 64 s | < 2 min | 18 s | Bien a la primera (PR #2): 7 herramientas de lectura, citó el evento `Failed to pull image` y el commit `42da8d0` y propuso `ed01aa4`, la imagen de prod. Antes de empezar, Docker estaba parado y Windows había reservado el puerto del clúster (ver la tabla de arriba) |
 | 2 | pendiente | | | | |
 | 3 | pendiente | | | | |
